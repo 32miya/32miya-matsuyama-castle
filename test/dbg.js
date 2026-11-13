@@ -1,0 +1,1 @@
+(()=>{ const D=__dbg,o=[]; for(const x of [-5,-4.5,-4,-3,-2.5,-2,-1.5,-1,-.5,0]) o.push([x,__oc.dbgBlock(x,-194),D.walkFloor(0,x,-194)]); o.push(JSON.stringify(D.TEN.modern.entry)); o.push(JSON.stringify(D.TEN.modern.FL[0].rects)); return o; })()

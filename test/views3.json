@@ -1,0 +1,6 @@
+[{"js":"window.__cam=null; __dbg.enterRoom(__dbg.ROOMS.find(r=>r.name.includes('売店'))); __dbg.P.yaw=0; __dbg.P.pitch=-.1;","wait":3000},
+{"js":"__dbg.enterRoom(__dbg.ROOMS.find(r=>r.name.includes('萬翠荘'))); __dbg.P.yaw=0;","wait":2500},
+{"js":"__dbg.setMode('edo'); __dbg.enterRoom(__dbg.ROOMS.find(r=>r.name.includes('表書院'))); __dbg.P.yaw=0; __dbg.P.pitch=-.05;","wait":3500},
+{"js":"__dbg.enterRoom(__dbg.ROOMS.find(r=>r.name.includes('太鼓櫓'))); __dbg.P.yaw=0;","wait":2500},
+{"js":"__dbg.enterRoom(__dbg.ROOMS.find(r=>r.name.includes('隠門'))); __dbg.P.yaw=0;","wait":2500},
+{"js":"__dbg.enterRoom(__dbg.ROOMS.find(r=>r.name.includes('重臣'))); __dbg.P.yaw=0;","wait":2500}]

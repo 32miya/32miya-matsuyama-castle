@@ -1,0 +1,5 @@
+[{"cam":[34,61,-174,4,66,-196]},{"cam":[-20,61,-180,4,66,-196]},{"cam":[-34,54,-28,-28,53,-60]},{"cam":[-75,60,-200,-30,63,-188]},
+{"js":"window.__cam=null; const P=__dbg.P; P.level=1; P.x=3; P.z=-193; P.y=__dbg.FL[1].y+1.6; P.yaw=Math.PI*0.75; P.pitch=0;","wait":2500},
+{"js":"const P=__dbg.P; P.level=1; P.x=-31; P.z=-182; P.y=__dbg.FL[1].y+1.6; P.yaw=0; P.pitch=0;","wait":2500},
+{"js":"const P=__dbg.P; P.level=3; P.x=6; P.z=-194; P.y=__dbg.FL[3].y+1.6; P.yaw=Math.PI/2; P.pitch=0;","wait":2500},
+{"js":"__dbg.setMode('edo'); window.__cam=[34,61,-174,4,70,-196];","wait":3000}]
