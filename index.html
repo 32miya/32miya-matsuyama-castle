@@ -1545,6 +1545,8 @@ const BRIDGES=[
 let BOUNDS={x0:-640,x1:520,z0:-420,z1:420}; let SCEN=null; const FILL={};
 const actB=()=>BRIDGES.filter(b=>b.mode==='both'||b.mode===MODE);
 function waterAt(x,z,m){ m=m||0; for(const w of MOATS) if(inR(w,x,z,m)) return true; return false; }
+/* 町の建物を置ける所か: 堀の水にかからず、地面が平ら（高さ0のまま）な所だけ（堀の上や山の斜面に浮いたり埋もれたりしないように） */
+function siteOK(x0,z0,x1,z1){ const ax=Math.min(x0,x1),bx=Math.max(x0,x1),az=Math.min(z0,z1),bz=Math.max(z0,z1); for(let i=0;i<=3;i++) for(let j=0;j<=3;j++){ const x=ax+(bx-ax)*i/3,z=az+(bz-az)*j/3; if(waterAt(x,z,.4)) return false; if(Math.abs(baseH(x,z))>.5) return false; } return true; }
 /* 道（木を植えない場所） */
 const ROADS=[{x0:-214,x1:520,z0:64,z1:76},{x0:140,x1:520,z0:18,z1:28},{x0:200,x1:212,z0:-260,z1:420},{x0:-640,x1:520,z0:186,z1:198},{x0:-336,x1:-322,z0:182,z1:420},{x0:-40,x1:-30,z0:76,z1:186},{x0:-640,x1:-480,z0:-20,z1:-12},{x0:-220,x1:-190,z0:-60,z1:-52},{x0:-214,x1:-202,z0:-52,z1:186},{x0:-336,x1:-322,z0:-214,z1:152},{x0:-450,x1:-214,z0:-20,z1:-12},{x0:-640,x1:200,z0:-262,z1:-250},{x0:-336,x1:-322,z0:-420,z1:-244}];
 const DOBASHI=BRIDGES.filter(b=>b.dobashi);
@@ -1789,7 +1791,8 @@ function machiya(cx,cz,ry,w,d,dozo){ const M0=TM(cx,0,cz,ry),h=4.8,hw=(w-.15)/2;
   if(dozo&&rnd()<.35){ addM(B.plaster,boxUVGeo(4.6,4.4,5,3,3),M0,TM((rnd()-.5)*(w-5),2.2,-d/2-3.3)); addM(B.roof,gableRoofGeo(4.6,5,1.3,.5,.3),M0,TM(0,4.4,-d/2-3.3)); }
   const rot=Math.abs(Math.sin(ry))>.5,bw=rot?d:w,bd=rot?w:d; block(cx-bw/2,cz-bd/2,cx+bw/2,cz+bd/2,'machi'); }
 function machiRow(a0,a1,front,axis,dir,dozo){ let a=a0; while(a1-a>3.5){ let w=4.5+rnd()*3; if(a1-a-w<3.5) w=a1-a; const d=10+rnd()*2;
-    if(axis==='x') machiya(a+w/2,front-dir*d/2,dir>0?0:Math.PI,w,d,dozo); else machiya(front-dir*d/2,a+w/2,dir>0?Math.PI/2:-Math.PI/2,w,d,dozo);
+    const ok=axis==='x'?siteOK(a,front,a+w,front-dir*d):siteOK(front,a,front-dir*d,a+w);
+    if(ok){ if(axis==='x') machiya(a+w/2,front-dir*d/2,dir>0?0:Math.PI,w,d,dozo); else machiya(front-dir*d/2,a+w/2,dir>0?Math.PI/2:-Math.PI/2,w,d,dozo); }
     a+=w+.05; if(rnd()<.06) a+=2.2; } }
 
 
@@ -2020,7 +2023,8 @@ function addDormers(T,list,mats){ const f=T.info; for(const [k,lv,side,W,H] of l
     const [x,z,ry]=side==='s'?[0,mb,0]:side==='n'?[0,-mb,Math.PI]:side==='e'?[ma,0,Math.PI/2]:[-ma,0,-Math.PI/2];
     if(k==='c') chidori(T.g,x,yy,z,ry+Math.PI/2*0,W,H,mats); else karahafu(T.g,x,yy-.4,z,ry,W,mats); } }
 /* 二重櫓 */
-function yagura(cx,cz,w,d,ry,o){ o=o||{}; const g=new THREE.Group(); g.position.set(cx,o.y||0,cz); g.rotation.y=ry||0; (o.par||GM).add(g);
+const YAGURA=[];
+function yagura(cx,cz,w,d,ry,o){ o=o||{}; YAGURA.push({cx,cz,w,d,ry:ry||0,y:o.y||0,par:o.par||GM}); const g=new THREE.Group(); g.position.set(cx,o.y||0,cz); g.rotation.y=ry||0; (o.par||GM).add(g);
   const h1=o.h1||4.2,h2=o.h2||3.6,wall=M[o.wall||'wallW'],mats={roof:o.roof||M.roof,gable:o.gable||M.plaster,gold:!!o.gold,shs:.7,crest:o.crest||M.tachi};
   if(o.base){ const b=mesh(frustumGeo(w+1,d+1,o.base,.6,4,true),o.stone||M.stoneK); g.add(b); }
   const yb=o.base||0; const w1=mesh(wallBoxGeo(w,h1,d),wall); w1.position.y=yb+h1/2; g.add(w1);
@@ -2629,13 +2633,15 @@ function buke(x0,z0,x1,z1,face,o){ o=o||{}; const w=x1-x0,d=z1-z0,cx=(x0+x1)/2,c
   const L=Math.max(hw,hd),D=Math.min(hw,hd),rr=hw>=hd?0:Math.PI/2; B.roof.add(gableRoofGeo(L,D,2.4,1.4,.8),TM(hx,3.7,hz,rr)); B.plaster.add(gableEndsGeo(L,D,2.4),TM(hx,3.7,hz,rr)); B.ridge.add(new THREE.BoxGeometry(rr?.45:L+2,.32,rr?L+2:.45),TM(hx,6.12,hz));
   block(hx-hw/2-.5,hz-hd/2-.5,hx+hw/2+.5,hz+hd/2+.5,'buke'); BUKE.push({hx,hz,hw,hd,face,x0,z0,x1,z1}); EDO_TREES.push([x0+4,z0+4,'pine'],[x1-4,z1-4,'round']); }
 /* 遠目の町家は軽い形（インスタンス）でまとめて並べる */
-const SIMPLE={modern:[],edo:[]};
-function simpleRow(era,a0,a1,front,axis,dir){ let a=a0; while(a1-a>4){ let w=5+rnd()*3.5; if(a1-a-w<4) w=a1-a; const d=9+rnd()*3,h=3.8+rnd()*1.2,c=front+dir*d/2; SIMPLE[era].push(axis==='x'?[a+w/2,c,w-.12,d,h,0]:[c,a+w/2,d,w-.12,h,1]); if(axis==='x') block(a,Math.min(front,front+dir*d),a+w,Math.max(front,front+dir*d),'machi'); else block(Math.min(front,front+dir*d),a,Math.max(front,front+dir*d),a+w,'machi'); a+=w; if(rnd()<.05) a+=2.5; } }
+const SIMPLE={modern:[],edo:[]},SDOORS={modern:[],edo:[]};
+function simpleRow(era,a0,a1,front,axis,dir){ let a=a0; while(a1-a>4){ let w=5+rnd()*3.5; if(a1-a-w<4) w=a1-a; const d=9+rnd()*3,h=3.8+rnd()*1.2,c=front+dir*d/2; if(!(axis==='x'?siteOK(a,front,a+w,front+dir*d):siteOK(front,a,front+dir*d,a+w))){ a+=w; continue; } SDOORS[era].push(axis==='x'?{x:a+w/2,z:front,nx:0,nz:-dir}:{x:front,z:a+w/2,nx:-dir,nz:0}); SIMPLE[era].push(axis==='x'?[a+w/2,c,w-.12,d,h,0]:[c,a+w/2,d,w-.12,h,1]); if(axis==='x') block(a,Math.min(front,front+dir*d),a+w,Math.max(front,front+dir*d),'machi'); else block(Math.min(front,front+dir*d),a,Math.max(front,front+dir*d),a+w,'machi'); a+=w; if(rnd()<.05) a+=2.5; } }
 /* 現代の建物（ビル・住宅） */
 function bldg(cx,cz,w,d,h,col,o){ o=o||{}; B.facade.add(facadeBoxGeo(w,h,d),TM(cx,h/2,cz),new THREE.Color(col||pick(['#e9e4da','#d8d3c8','#c9c4b8','#e3dccc','#bfb7a8']))); B.concrete.add(new THREE.BoxGeometry(w+.3,.4,d+.3),TM(cx,h+.2,cz));
   if(o.roof) B.hroof.add(gableRoofGeo(w,d,1.6,.5,.3),TM(cx,h,cz,w<d?Math.PI/2:0),new THREE.Color(o.roof)); block(cx-w/2,cz-d/2,cx+w/2,cz+d/2,'town'); }
+const HOUSES=[];
 function houseRow(a0,a1,front,axis,dir){ let a=a0; while(a1-a>7){ const w=Math.min(8+rnd()*6,a1-a),d=9+rnd()*4,h=rnd()<.7?6+rnd()*1.5:9+rnd()*9,c=front+dir*(d/2+1.5); const roof=h<8?pick(['#3d4147','#4a3c34','#2f3a46','#5a5650']):null;
-    if(axis==='x') bldg(a+w/2,c,w-.6,d,h,null,{roof}); else bldg(c,a+w/2,d,w-.6,h,null,{roof}); a+=w+.8; } }
+    if(!(axis==='x'?siteOK(a,c-d/2,a+w,c+d/2):siteOK(c-d/2,a,c+d/2,a+w))){ a+=w+.8; continue; }
+    if(axis==='x'){ bldg(a+w/2,c,w-.6,d,h,null,{roof}); HOUSES.push({x:a+w/2,z:front+dir*1.5,nx:0,nz:-dir,h}); } else { bldg(c,a+w/2,d,w-.6,h,null,{roof}); HOUSES.push({x:front+dir*1.5,z:a+w/2,nx:-dir,nz:0,h}); } a+=w+.8; } }
 
 /* ================= 両方の時代に残る門と櫓（現存・復元） =================
    松山城には天守をはじめ21棟の重要文化財が残る。そのほかの多くの門・櫓も昭和に木造で復元されている */
@@ -2813,6 +2819,51 @@ B=BM;
   const w=9,d=6,h=3; shell(R,w,d,h,{floor:'floor',wall:'tsuchi',front:'glass',ceil:'woodGrain',door:2,lamps:2});
   msRp(R,'castle',0,-d/2+.25,0,1.8,{y:.7}); msRp(R,'shachiL',-3,-1.2,0,1,{y:.8}); msRp(R,'shachiR',3,-1.2,0,1,{y:.8}); msRp(R,'oni',0,-2,0,.7,{y:.8});
   rb(R,'woodGrain',-4,-2,0,.8,-1.8,-.6,true); rb(R,'woodGrain',2,4,0,.8,-1.8,-.6,true); rb(R,'woodGrain',-1,1,0,.8,-2.6,-1.4,true); }
+/* ================= もっと多くの建物に入れるように（備中松山城と同じ作り） =================
+   同じ種類の建物（町家・町人の家・武家屋敷・家・店・櫓）は、中の部屋を1つ共有し、入口だけを建物ごとに付ける（extra）。
+   出るときは入った入口に戻る。入口の目印はまとめて描く（近づくと画面下に「入る」が出る） */
+const walk0=(x,z)=>!hitBlock(x,z,.35)&&!waterAt(x,z,.6)&&!(inR(INR,x,z,0)&&!platAt(x,z)&&!rampAt(x,z)&&hillH(x,z)>.6);
+const ERA_B=e=>e==='modern'?BM:BE;
+function doorBatch(era,x,z,nx,nz,w,h,y,col){ const Bt=ERA_B(era),old=MODE; MODE=era; let wx=x,wz=z; for(let k=0;k<40&&!hitBlock(wx,wz,0);k++){ wx-=nx*.1; wz-=nz*.1; } MODE=old;
+  const ry=Math.atan2(nx,nz),ox=wx+nx*.05,oz=wz+nz*.05,cr=Math.cos(ry),sr=Math.sin(ry);
+  Bt.black.add(new THREE.BoxGeometry(w,h,.04),TM(ox,y+h/2,oz,ry)); for(const s of [-1,1]) Bt.darkwood.add(new THREE.BoxGeometry(.18,h+.2,.18),TM(ox+cr*s*(w/2+.09),y+(h+.2)/2,oz-sr*s*(w/2+.09)));
+  Bt.darkwood.add(new THREE.BoxGeometry(w+.5,.2,.22),TM(ox,y+h+.1,oz,ry)); if(col) Bt.noren.add(new THREE.BoxGeometry(w*.92,.7,.03),TM(ox+nx*.09,y+h-.38,oz+nz*.09,ry),new THREE.Color(col)); }
+function autoDoor(era,cx,cz,hx,hz,pref){ const old=MODE; MODE=era; let r=null; const C=[[0,1],[0,-1],[1,0],[-1,0]]; if(pref) C.unshift(pref);
+  for(const [nx,nz] of C){ const px=cx+nx*(hx+.55),pz=cz+nz*(hz+.55); if(walk0(px+nx*.8,pz+nz*.8)&&walk0(px+nx*2.4,pz+nz*2.4)){ r={px,pz,nx,nz}; break; } } MODE=old; return r; }
+function addDoors(R,list,o){ o=o||{}; R.extra=R.extra||[]; let n=0; const okD=(x,z)=>x>BOUNDS.x0+1&&x<BOUNDS.x1-1&&z>BOUNDS.z0+1&&z<BOUNDS.z1-1&&walk0(x,z); for(const d of list){ if(!d) continue; const D=doorAt(d.px,d.pz,d.nx,d.nz),old=MODE; MODE=R.era; const ok=okD((D.zone.x0+D.zone.x1)/2,(D.zone.z0+D.zone.z1)/2)&&okD(D.exitPos[0],D.exitPos[1]); MODE=old; if(!ok) continue; R.extra.push(Object.assign(D,{name:o.name||R.name,noMark:true})); if(o.mark) doorBatch(R.era,d.px,d.pz,d.nx,d.nz,o.w||1.4,o.h||2.1,d.y||0,o.col); n++; } return n; }
+const ROOM_DONE=new Set(ROOMS.map(R=>R.zone.x0.toFixed(1)+','+R.zone.z0.toFixed(1)));
+const freeD=d=>{ if(!d) return null; const z=doorAt(d.px,d.pz,d.nx,d.nz).zone; return ROOM_DONE.has(z.x0.toFixed(1)+','+z.z0.toFixed(1))?null:d; };
+const machiD=m=>{ const c=Math.cos(m.ry),s=Math.sin(m.ry); return {px:m.cx+m.eo*c+(m.F+.55)*s,pz:m.cz-m.eo*s+(m.F+.55)*c,nx:s,nz:c}; };
+const bukeD=(b,era)=>{ const f=b.face,n=f==='e'?[1,0]:f==='w'?[-1,0]:f==='s'?[0,1]:[0,-1]; return autoDoor(era,b.hx,b.hz,b.hw/2+.5,b.hd/2+.5,n); };
+const ygD=(y,era)=>{ const c=Math.abs(Math.cos(y.ry)),s=Math.abs(Math.sin(y.ry)),hx=y.w/2*c+y.d/2*s+.6,hz=y.w/2*s+y.d/2*c+.6; const d=autoDoor(era,y.cx,y.cz,hx,hz,[0,1]); if(d) d.y=y.y; return d; };
+const nearRoom=(y,R)=>R&&R.exitPos&&Math.hypot(y.cx-R.exitPos[0],y.cz-R.exitPos[1])<10;
+/* ----- 現代 ----- */
+B=BM;
+{ const R=RD.mHouse=mkRoom(Object.assign({era:'modern'},doorAt(0,-9000,0,1),roomTxt('松山の町の家','まつやま の いえ','松山の町なかの家。中のようすは想像です。',[['場所','松山の町なか']])));
+  const w=8,d=7,h=2.6; shell(R,w,d,h,{floor:'floor',wall:'tsuchi',front:'tsuchi',ceil:'woodGrain',door:1,doorMat:'woodGrain',lamps:2});
+  rb(R,'tatami',-w/2,-.6,0,.05,-d/2,0,false,1.8); rb(R,'lacquer',-2.8,-1.4,0,.35,-2.3,-1.3,true); rb(R,'woodGrain',1.6,w/2,0,.9,-d/2,-d/2+.6,true); rb(R,'black',2.2,3.6,.9,1.7,-d/2+.2,-d/2+.3); rb(R,'woodGrain',.6,2.2,0,.75,.6,1.6,true);
+  addDoors(R,HOUSES.filter(o=>o.h<8).concat(SDOORS.modern).map(o=>({px:o.x+o.nx*.55,pz:o.z+o.nz*.55,nx:o.nx,nz:o.nz})),{mark:true,w:1,h:2.1}); }
+{ const R=RD.mShop=mkRoom(Object.assign({era:'modern'},doorAt(0,-9000,0,1),roomTxt('町のお店','まち の おみせ','松山の町なかのお店やビルの1階。中のようすは想像です。',[['場所','松山の町なか']])));
+  const w=10,d=9,h=3; shell(R,w,d,h,{floor:'floor',wall:'tsuchi',front:'glass',ceil:'woodGrain',door:1.8,doorMat:'glass',lamps:4});
+  for(let k=0;k<3;k++) rb(R,'woodGrain',-3.6+k*2.6,-2.8+k*2.6,0,1.6,-2.5,1.5,true); rb(R,'showcase',2.2,4.6,0,1,2,2.8,true); rb(R,'woodGrain',w/2-.5,w/2,0,2,-d/2+.5,d/2-1,true);
+  addDoors(R,HOUSES.filter(o=>o.h>=8).map(o=>({px:o.x+o.nx*.55,pz:o.z+o.nz*.55,nx:o.nx,nz:o.nz})),{mark:true,w:1.6,h:2.3}); }
+{ const R=RD.mYagura=mkRoom(Object.assign({era:'modern'},doorAt(0,-9000,0,1),roomTxt('櫓の中','やぐら の なか','松山城には21棟の重要文化財が残り、櫓の中では鎧や刀、城の歴史を伝える資料が展示されています（ここでは中を想像で再現しています）。',[['文化財','重要文化財21棟']])));
+  const w=8,d=4.6,h=3.4; shell(R,w,d,h,{floor:'floor',wall:'kuraW',front:'kuraW',ceil:'darkwood',door:1.4,doorMat:'woodGrain',lamps:3}); pillarsRow(R,'darkwood',w,d,h,2.6,false);
+  rb(R,'showcase',-3.4,-1.4,0,.9,-d/2+.3,-d/2+1.1,true); rb(R,'showcase',1.4,3.4,0,.9,-d/2+.3,-d/2+1.1,true); msRp(R,'katana',2.4,-d/2+.7,0,.6,{y:.9});
+  addDoors(R,YAGURA.filter(y=>y.par===scene&&!nearRoom(y,RD.taiko)&&!nearRoom(y,RD.kakure)).map(y=>ygD(y,'modern')),{mark:true,w:1.2,h:2}); }
+/* ----- 江戸時代 ----- */
+B=BE;
+addDoors(RD.machiE,MACHI.filter(m=>m!==pickMachi(30,180)).map(machiD));
+addDoors(RD.bukeE,BUKE.filter(b=>b!==bukeHouse).map(b=>freeD(bukeD(b,'edo'))),{mark:true,col:'#26406a'});
+{ const R=RD.eNagaya=mkRoom(Object.assign({era:'edo'},doorAt(0,-9000,0,1),roomTxt('町人の家','ちょうにん の いえ','城下の町人の住まい。入口の土間に台所があり、奥が畳の部屋です（中のようすは想像）。',[['町','古町・外側の町人地']])));
+  const w=5.4,d=7.4,h=3; shell(R,w,d,h,{floor:'tsuchi',wall:'tsuchi',front:'woodGrain',ceil:'woodGrain',door:1.2,doorX:-1.6,doorMat:'noren',lamps:1});
+  rb(R,'tatami',-.6,w/2,0,.4,-d/2,d/2-.6,true,1.8); rb(R,'darkwood',-.7,-.6,0,.42,-d/2,d/2-.6); rb(R,'stone',-w/2,-1.4,0,.75,-d/2,-d/2+1.2,true);
+  addDoors(R,SDOORS.edo.map(o=>({px:o.x+o.nx*.55,pz:o.z+o.nz*.55,nx:o.nx,nz:o.nz})),{mark:true,w:1.2,h:1.9,col:'#26406a'}); }
+{ const R=RD.eYagura=mkRoom(Object.assign({era:'edo'},doorAt(0,-9000,0,1),roomTxt('櫓の中（武具庫）','やぐら の なか','石垣の上の櫓は、ふだんは武具や兵糧を納める蔵として使われ、戦のときには兵が詰めて狭間から鉄砲や弓で守りました（中のようすは想像）。',[['役目','武具庫・守りの拠点']])));
+  const w=8,d=4.6,h=3.4; shell(R,w,d,h,{floor:'floor',wall:'kuraW',front:'kuraW',ceil:'darkwood',door:1.4,doorMat:'woodGrain',lamps:2}); pillarsRow(R,'darkwood',w,d,h,2.6,false);
+  msRp(R,'yari',-3.2,-d/2+.4,0,1.5); msRp(R,'yari',-2.4,-d/2+.4,0,1.5); msRp(R,'nagamochi',2.6,-d/2+.6,0,.8,{solid:true});
+  addDoors(R,YAGURA.filter(y=>!nearRoom(y,RD.taiko)&&!nearRoom(y,RD.kakure)).map(y=>ygD(y,'edo')),{mark:true,w:1.2,h:2}); }
+
 B=BS;
 /* ---------- spots & areas ---------- */
 /* q: Wikimedia Commons で探す写真の検索語。edo: 寛永のころに切り替えたときの上書き */
@@ -3179,8 +3230,11 @@ function mkMap(src,set){ const c=makeCanvas(GN,GN),x=c.getContext('2d'); x.drawI
 const mapCM=mkMap(gc,BSETS.modern),mapCE=mkMap(gcE,BSETS.edo); let mapC=mapCM;
 for(const [c,T] of [[mapCM,TEN.modern],[mapCE,TEN.edo]]){ const x=c.getContext('2d'); x.fillStyle='#d2452c'; const w=T.ext[0].w,d=T.ext[0].d; x.fillRect((T.cx-w/2-DX0)*GS,(T.cz-d/2-DZ0)*GS,w*GS,d*GS); }
 const miniC=$('miniC'),mini2=miniC.getContext('2d');
-function drawMini(){ const r=miniC.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1),S=Math.round(r.width*dpr); if(miniC.width!==S){ miniC.width=miniC.height=S; }
-  const span=170*GS,cx=((P.room?P.room.door[0]:P.x)-DX0)*GS,cz=((P.room?P.room.door[1]:P.z)-DZ0)*GS; mini2.fillStyle='#5a5852'; mini2.fillRect(0,0,S,S); mini2.drawImage(mapC,cx-span/2,cz-span/2,span,span,0,0,S,S);
+/* 小さな地図: iPhone の Safari は、元の絵からはみ出す範囲を drawImage で切り出すと何も描かない（または黒くなる）ことがあるので、はみ出さない範囲だけを切り出して描く。
+   画面を回したときに canvas を作り直して黒くなるのを防ぐため、canvas は大きくするときだけ作り直す */
+function drawMini(){ const r=miniC.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1),need=Math.max(2,Math.round(r.width*dpr)); if(miniC.width<need){ miniC.width=miniC.height=need; } const S=miniC.width;
+  const span=170*GS,cx=((P.room?P.room.door[0]:P.x)-DX0)*GS,cz=((P.room?P.room.door[1]:P.z)-DZ0)*GS,sx=cx-span/2,sy=cz-span/2,k=S/span,MW_=mapC.width,MH_=mapC.height; mini2.fillStyle='#5a5852'; mini2.fillRect(0,0,S,S);
+  const ix0=Math.max(0,sx),iy0=Math.max(0,sy),ix1=Math.min(MW_,sx+span),iy1=Math.min(MH_,sy+span); if(ix1-ix0>1&&iy1-iy0>1){ try{ mini2.drawImage(mapC,ix0,iy0,ix1-ix0,iy1-iy0,(ix0-sx)*k,(iy0-sy)*k,(ix1-ix0)*k,(iy1-iy0)*k); }catch(e){} }
   mini2.save(); mini2.translate(S/2,S/2); mini2.rotate(-P.yaw); mini2.fillStyle='#fff'; mini2.strokeStyle='#d2452c'; mini2.lineWidth=2*dpr; mini2.beginPath(); mini2.moveTo(0,-9*dpr); mini2.lineTo(6*dpr,7*dpr); mini2.lineTo(0,3*dpr); mini2.lineTo(-6*dpr,7*dpr); mini2.closePath(); mini2.fill(); mini2.stroke(); mini2.restore(); }
 let MAPR={x0:-500,x1:260,z0:-300,z1:230};
 function drawMap(){ const c=$('mapC'),r=c.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1); c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
