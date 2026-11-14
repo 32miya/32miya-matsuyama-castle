@@ -2915,6 +2915,9 @@ const SPOTS=[
   {id:'machi',edoOnly:true,name:'城下の町',kana:'じょうかまち',at:[30,180],pos:[30,192],look:[30,4,170],
    text:'加藤嘉明は城の築城と同時に町割りを行い、伊予の中心となる城下町をつくりました。「松山」の地名も、このとき嘉明が名づけたものです。',meta:[['町割り','加藤嘉明'],['中に入る','城下の商家']]}
 ];
+/* お城さんぽ共通（/oshiro/common/fuda.js の見どころ札・写真モード）へ、名所と自分の位置を知らせる窓口 */
+window.OshiroGame={ spots:()=>spotList(), all:()=>SPOTS, me:()=>({x:P.x,z:P.z,level:P.level,room:!!P.room,walk:P.mode==='walk',tour:typeof tour!=='undefined'&&!!tour.on}), started:()=>typeof started==='undefined'||!!started, warpAt:0 };
+{ const _tp=teleport; teleport=function(s){ window.OshiroGame.warpAt=performance.now(); return _tp.apply(this,arguments); }; }
 function spotList(){ return SPOTS.filter(s=>MODE==='edo'?!s.modernOnly:!s.edoOnly).map(s=>MODE==='edo'&&s.edo?Object.assign({},s,s.edo):s); }
 function areaAt(x,z){ const e=MODE==='edo';
   for(const b of actB()) if(inR(b,x,z,.2)) return b.name;
@@ -3599,6 +3602,7 @@ window.__dbg={P,TEN,ROOMS,setMode:m=>setMode(m),teleport:s=>teleport(s),SPOTS,wa
 })();
 </script>
 <script src="/oshiro/common/goshuin.js"></script>
+<script src="/oshiro/common/fuda.js"></script>
 <!-- oshiro-portal:end -->
 </body>
 </html>
